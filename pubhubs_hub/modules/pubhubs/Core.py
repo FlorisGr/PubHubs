@@ -92,13 +92,13 @@ class Core:
                     'dynamic': { 'last_reload': 0 }
         }
 
-        if self._config != None:
+        if self._config.hub_client_url is not None:
             hub_info['hub_client_url'] = self._config.hub_client_url
 
         api.register_web_resource('/_synapse/client/.ph/info', PhInfoEP({ 'Ok': hub_info }, self._config.hub_info_update_interval))
 
-        # new, multi-server setup
-        if self._config == None:
+        # new, multi-server setup; standalone hubs (see YiviLogin.py) run without PubHubs Central
+        if self._config.phc_url is None:
             return
 
         self._secret_box = nacl.secret.Aead(nacl.utils.random(nacl.secret.Aead.KEY_SIZE))
@@ -113,12 +113,12 @@ class Core:
 
     @staticmethod
     def parse_config(config):
+        config = config or {}
         if 'phc_url' not in config:
             logger.warn("pubhubs core module: phc_url not configured - not enabling multi-server setup endpoints")
-            return None
 
         return Config(
-                phc_url = config['phc_url'],
+                phc_url = config.get('phc_url'),
                 hub_client_url = config.get('hub_client_url'),
                 hub_info_update_interval = config.get('hub_info_update_interval', Config.hub_info_update_interval))
 

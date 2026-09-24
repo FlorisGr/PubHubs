@@ -242,6 +242,8 @@ const en = {
 		mascot_alt: '{0} mascot',
 		login_again: 'You have been logged out. Please log in again to continue.',
 		loading_yivi: 'Loading Yivi...',
+		standalone_explanation: 'Scan the QR code with your Yivi app to log in to this hub. Other members only see your pseudonym.',
+		standalone_failed: 'Logging in did not succeed. Please try again.',
 	},
 	logout: {
 		logout: 'Logout',
@@ -278,6 +280,7 @@ const en = {
 		home: 'Hub welcome',
 		directmsg: 'Direct messages',
 		discover: 'Discover rooms',
+		other_hubs: 'Other hubs',
 		logout: 'Logout',
 		name: 'Here will be a name',
 		private_rooms: '@:rooms.private_rooms',
@@ -312,6 +315,7 @@ const en = {
 		reply_in_thread: 'Reply in thread',
 	},
 	others: {
+		other_hubs_explanation: 'Each of these hubs has its own login. You log in there with Yivi again, and get a different pseudonym.',
 		step: 'Step {0}',
 		nop: 'This feature is not implemented yet.',
 		search: 'Search',

@@ -86,6 +86,21 @@
 								<span class="w-full truncate text-left">{{ t('menu.moderation') }}</span>
 							</button>
 						</li>
+						<!-- A standalone hub has no global client to log out from, so offer it here -->
+						<li
+							v-if="standalone.isStandalone"
+							class="hover:bg-surface-elevated rounded-base h-fit transition-all duration-200 ease-in-out"
+							role="menuitem"
+						>
+							<button
+								class="flex w-full items-center gap-200 px-200 py-100 hover:cursor-pointer"
+								type="button"
+								@click="pubhubs.logout()"
+							>
+								<Icon type="sign-out" />
+								<span class="w-full truncate text-left">{{ t('logout.logout') }}</span>
+							</button>
+						</li>
 					</Menu>
 				</section>
 
@@ -235,8 +250,10 @@
 	import { useHubSettings } from '@hub-client/stores/hub-settings';
 	import { useMenu } from '@hub-client/stores/menu';
 	import { useNotifications } from '@hub-client/stores/notifications';
+	import { usePubhubsStore } from '@hub-client/stores/pubhubs';
 	import { useRooms } from '@hub-client/stores/rooms';
 	import { useSettings } from '@hub-client/stores/settings';
+	import { useStandalone } from '@hub-client/stores/standalone';
 	import { useUser } from '@hub-client/stores/user';
 
 	const emit = defineEmits<{
@@ -249,6 +266,8 @@
 	const user = useUser();
 	const rooms = useRooms();
 	const menu = useMenu();
+	const pubhubs = usePubhubsStore();
+	const standalone = useStandalone();
 	const roles = useRoles();
 	const notifications = useNotifications();
 	const { copyHubUrl } = useClipboard();

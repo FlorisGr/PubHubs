@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 HUB_CLIENT_API_MODULE = "conf.modules.pubhubs.HubClientApi"
 CORE_MODULE = "conf.modules.pubhubs.Core"
+# Listing this module makes the hub standalone: users log in to it with Yivi directly, and it
+# does not use PubHubs Central or the global client.
+YIVI_LOGIN_MODULE = "conf.modules.pubhubs.YiviLogin"
 
 
 def sqlite3_path_in(config: dict):
@@ -188,6 +191,8 @@ class UpdateConfig:
         # Resolved while applying `modules`, and needed afterwards to complete
         # sso.client_whitelist.
         self._resolved_global_client_url = None
+        # Set while applying `modules`: whether the hub owner listed YIVI_LOGIN_MODULE.
+        self._standalone = False
         # The dicts above are class attributes, so work on deep copies: a run must never
         # mutate them, or a second run in the same process would start from mangled values.
         self._dont_change = copy.deepcopy(self.DONT_CHANGE_CONFIG)
@@ -494,6 +499,16 @@ class UpdateConfig:
         # This script replaces the config checker, so drop it from older configurations.
         modules = [m for m in modules if m["module"] not in self.RETIRED_MODULES]
 
+        self._standalone = any(m["module"] == YIVI_LOGIN_MODULE for m in modules)
+        if self._standalone:
+            logger.info(f" - INFO ✅  {YIVI_LOGIN_MODULE} is configured, so this is a standalone hub (Yivi login, no PubHubs Central)")
+            for m in modules:
+                # Entering through PubHubs Central next to the Yivi login would give every user
+                # two unrelated accounts on this hub.
+                if m["module"] == CORE_MODULE and "phc_url" in (m.get("config") or {}):
+                    del m["config"]["phc_url"]
+                    logger.warning(f" - Warning ⚠️  removed phc_url from {CORE_MODULE}'s config: a standalone hub does not use PubHubs Central")
+
         present = {m["module"] for m in modules}
         # Sorted, so the generated file does not change order between runs.
         for name in sorted(self._dont_change[key]):
@@ -505,7 +520,7 @@ class UpdateConfig:
         self._resolve_client_urls(homeserver_live)
 
     def _new_module(self, name: str) -> dict:
-        if name != CORE_MODULE:
+        if name != CORE_MODULE or self._standalone:
             return {"module": name}
         phc_url = (
             "https://phc.pubhubs.net" if self.check_environment == CheckEnvironment.PRODUCTION
@@ -527,7 +542,10 @@ class UpdateConfig:
             raise ConfigError("❌   config.client_url should be set but is missing")
         self._check_did_start_change(f"({HUB_CLIENT_API_MODULE}'s config).client_url", config["client_url"], "http://")
 
-        if "global_client_url" in config:
+        if self._standalone:
+            # There is no global client; the hub client is the only one that embeds hub pages.
+            config.setdefault("global_client_url", config["client_url"])
+        elif "global_client_url" in config:
             self._check_did_start_change(f"({HUB_CLIENT_API_MODULE}'s config).global_client_url", config["global_client_url"], "http://")
         elif self.check_environment == CheckEnvironment.DEVELOPMENT:
             raise ConfigError("❌   in development, global_client_url should have been set by start_testhub.py")

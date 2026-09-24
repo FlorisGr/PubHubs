@@ -26,6 +26,12 @@
 
 		<ContextMenu v-if="!isMobile" />
 	</div>
+	<StandaloneLogin
+		v-else-if="showStandaloneLogin"
+		:hub-name="standalone.info?.hub_name"
+		:linked-hubs="standalone.linkedHubs"
+		@logged-in="onStandaloneLoggedIn"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -49,21 +55,26 @@
 
 	// Logic
 	import { PubHubsInvisibleMsgType, PubHubsMgType } from '@hub-client/logic/core/events';
+	import { fetchStandaloneInfo } from '@hub-client/logic/core/standaloneLogin';
 	import { createLogger } from '@hub-client/logic/logging/Logger';
 	import { hubId } from '@hub-client/logic/utils/hubId';
 
 	// Models
 	import { QueryParameterKey } from '@hub-client/models/constants';
 
+	import StandaloneLogin from '@hub-client/pages/StandaloneLogin.vue';
+
 	// Stores
 	import { useContextMenuStore } from '@hub-client/stores/contextMenu.store';
 	import { useDialog } from '@hub-client/stores/dialog';
 	import { type HubInformation } from '@hub-client/stores/hub-settings';
 	import { useHubSettings } from '@hub-client/stores/hub-settings';
+	import { useMenu } from '@hub-client/stores/menu';
 	import { Message, MessageBoxType, MessageType, useMessageBox } from '@hub-client/stores/messagebox';
 	import { usePubhubsStore } from '@hub-client/stores/pubhubs';
 	import { useRooms } from '@hub-client/stores/rooms';
 	import { FeatureFlag, useSettings } from '@hub-client/stores/settings';
+	import { useStandalone } from '@hub-client/stores/standalone';
 	import { useUser } from '@hub-client/stores/user';
 
 	const logger = createLogger('App');
@@ -77,8 +88,11 @@
 	const messagebox = useMessageBox();
 	const dialog = useDialog();
 	const pubhubs = usePubhubsStore();
+	const menu = useMenu();
+	const standalone = useStandalone();
 	const settingsDialog = ref(false);
 	const setupReady = ref(false);
+	const showStandaloneLogin = ref(false);
 	const pendingRouteFromParent = ref<RouteParamValue | null>(null);
 	const isMobile = computed(() => settings.isMobileState);
 
@@ -172,17 +186,18 @@
 
 		await startMessageBox();
 
+		if (hubSettings.isSolo) {
+			await initStandalone();
+		}
+
 		// check if hash doesn't start with hub,
 		// then it is running only the hub-client, so we need to do some checks
 		if (!window.location.hash.startsWith('#/hub/')) {
-			// With sliding-sync, loading is faster.
-			await pubhubs.login();
-			// Not awaited: the first aggregate waits for the initial room list, and the UI has nothing to
-			// gain from waiting with it — the badge fills in when it resolves.
-			void setupUnreadAggregateTracking();
-			setupReady.value = true;
-			void rooms.fetchPublicRooms();
-			void addPushRules();
+			if (standalone.isStandalone && !pubhubs.Auth.hasAuth()) {
+				showStandaloneLogin.value = true;
+			} else {
+				await startHub();
+			}
 		}
 
 		if (!user.isLoggedIn) {
@@ -197,6 +212,36 @@
 
 		logger.debug('App.vue onMounted done');
 	});
+
+	async function startHub() {
+		// With sliding-sync, loading is faster.
+		await pubhubs.login();
+		// Not awaited: the first aggregate waits for the initial room list, and the UI has nothing to
+		// gain from waiting with it — the badge fills in when it resolves.
+		void setupUnreadAggregateTracking();
+		setupReady.value = true;
+		void rooms.fetchPublicRooms();
+		void addPushRules();
+	}
+
+	/**
+	 * A standalone hub has its own Yivi login instead of the global client, which would otherwise
+	 * also give the hub its name.
+	 */
+	async function initStandalone() {
+		const info = await fetchStandaloneInfo();
+		standalone.setInfo(info);
+		if (!info) return;
+		hubSettings.initHubInformation({ name: info.hub_name });
+		if (info.linked_hubs.length > 0) {
+			menu.addMenuItem({ key: 'menu.other_hubs', icon: 'globe', to: { name: 'other-hubs' }, path: '/other-hubs' });
+		}
+	}
+
+	async function onStandaloneLoggedIn() {
+		showStandaloneLogin.value = false;
+		await startHub();
+	}
 
 	const handleViewport = (e: MessageEvent) => {
 		if (e.data?.type === 'viewport-update') {

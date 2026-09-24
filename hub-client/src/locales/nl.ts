@@ -234,6 +234,8 @@ const nl = {
 		mascot_alt: '{0}-mascotte',
 		login_again: 'Je bent uitgelogd. Log opnieuw in om verder te gaan.',
 		loading_yivi: 'Yivi laden...',
+		standalone_explanation: 'Scan de QR-code met je Yivi-app om in te loggen bij deze hub. Andere leden zien alleen je pseudoniem.',
+		standalone_failed: 'Inloggen is niet gelukt. Probeer het opnieuw.',
 	},
 	logout: {
 		logout: 'Logout',
@@ -270,6 +272,7 @@ const nl = {
 		home: 'Hub welkom',
 		directmsg: 'Directe berichten',
 		discover: 'Ontdek kamers',
+		other_hubs: 'Andere hubs',
 		logout: 'Uitloggen',
 		name: 'Hier komt een naam',
 		private_rooms: '@:rooms.private_rooms',
@@ -304,6 +307,7 @@ const nl = {
 		reply_in_thread: 'Beantwoorden in thread',
 	},
 	others: {
+		other_hubs_explanation: 'Elk van deze hubs heeft een eigen login. Je logt daar opnieuw in met Yivi, en krijgt een ander pseudoniem.',
 		step: 'Stap {0}',
 		nop: 'Deze functionaliteit is nog niet geimplementeerd.',
 		search: 'Zoeken',

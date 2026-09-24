@@ -6,6 +6,7 @@ import { CONFIG } from '@hub-client/logic/logging/Config';
 import { createLogger } from '@hub-client/logic/logging/Logger';
 
 // Stores
+import { useHubSettings } from '@hub-client/stores/hub-settings';
 import { Message, MessageType, useMessageBox } from '@hub-client/stores/messagebox';
 import { useUser } from '@hub-client/stores/user';
 
@@ -28,6 +29,11 @@ const INDEXEDDB_PROBE_DB_NAME = 'pubhubs-storage-probe';
 // loading a large cache honestly takes. This cap is a backstop against a pathological hang, not a
 // judgement about the platform — that judgement has already been made by the probe.
 const INDEXEDDB_STARTUP_TIMEOUT_MS = 30_000;
+
+// A hub client running solo (as the top-level page, e.g. for a standalone hub with its own Yivi
+// login) has no global client to keep its access token, so it keeps it itself. It is not an
+// iframe then, so its storage is not blocked the way a third-party frame's is.
+const SOLO_AUTH_KEY = `pubhubs-auth:${CONFIG._env.HUB_URL}`;
 
 /**
  * Whether this context may use IndexedDB at all, decided by opening and discarding a tiny database.
@@ -111,11 +117,34 @@ class Authentication {
 		);
 	}
 
+	private _readSoloAuth(): string | null {
+		if (!useHubSettings().isSolo) return null;
+		try {
+			return window.localStorage.getItem(SOLO_AUTH_KEY);
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Keep the access token of a solo hub client, which has no global client to keep it.
+	 */
+	public storeSoloAuth(accessToken: string, userId: string) {
+		window.localStorage.setItem(SOLO_AUTH_KEY, JSON.stringify({ token: accessToken, userId }));
+	}
+
+	/**
+	 * Whether there is an access token to log in with.
+	 */
+	public hasAuth(): boolean {
+		return this._fetchAuth().auth.accessToken !== undefined;
+	}
+
 	private _fetchAuth() {
 		const auth: ICreateClientOpts = { baseUrl: this.baseUrl };
 		const query = new URLSearchParams(window.location.search);
 		const newToken = query.get('newToken');
-		const token = query.get('accessToken');
+		const token = query.get('accessToken') ?? this._readSoloAuth();
 		if (token) {
 			const access = JSON.parse(token);
 			const accessToken = access.token;
@@ -131,6 +160,11 @@ class Authentication {
 
 	private _clearAuth() {
 		useMessageBox().sendMessage(new Message(MessageType.RemoveAccessToken));
+		try {
+			window.localStorage.removeItem(SOLO_AUTH_KEY);
+		} catch {
+			// Nothing was stored then
+		}
 	}
 
 	public getAccessToken(): string | null {
@@ -221,7 +255,15 @@ class Authentication {
 		}
 	}
 
-	logout() {
+	async logout() {
+		if (useHubSettings().isSolo && this.client) {
+			// Solo, nothing else holds the token, so revoke it instead of only forgetting it
+			try {
+				await this.client.logout(true);
+			} catch (error) {
+				logger.warn('Could not revoke the access token at logout', { error });
+			}
+		}
 		this._clearAuth();
 		window.location.replace(this.clientUrl);
 	}

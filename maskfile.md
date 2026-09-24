@@ -261,6 +261,32 @@ echo "Running Hub client for testhub${n}..."
 env VITE_HUB_URL=$(node -e "console.log('http://localhost:' + (8008 + $n))") npx vite --host -l info --port=$(node -e "console.log(8001 + $n)")
 ```
 
+#### standalone (n)
+
+> Runs the n-th hub as a standalone hub: users log in to it directly with Yivi
+
+Adds the `conf.modules.pubhubs.YiviLogin` module to `pubhubs_hub/testhub<n>/homeserver.yaml` (when
+it is not there yet), then runs the hub server and hub client in a TMUX session. No PubHubs Central,
+global client or `mask run yivi` needed: the hub container runs its own Yivi server. Open the hub
+client directly, on port 8001 + n.
+
+Scanning the QR code requires the Yivi app in developer mode, on a phone that can reach this
+machine's network address. `mask run hub init testhub-dirs` wipes the hub's pseudonym key, which
+orphans all its local accounts.
+
+Don't forget to build the hub image and setup the hub's directory using the
+`mask run hub init` command first
+
+**OPTIONS**
+
+- no_postgres
+    - flags: --no-postgres
+    - desc: Passed through to the hub server, see `mask run hub server`'s --no-postgres.
+
+```sh
+PH_NO_POSTGRES="$no_postgres" bash scripts/run-standalone-hub.sh "${n}"
+```
+
 #### mainclient
 
 > Runs the hub client (local) against the main (staging) server

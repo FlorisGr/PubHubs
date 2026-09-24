@@ -151,8 +151,8 @@ const usePubhubsStore = defineStore('pubhubs', {
 			}
 		},
 
-		logout() {
-			this.Auth.logout();
+		async logout() {
+			await this.Auth.logout();
 		},
 
 		/**

@@ -87,6 +87,13 @@ const routes = [
 		meta: { hideBar: true, onboarding: true },
 	},
 	{
+		// Only in the menu of a standalone hub that links to other hubs
+		path: '/other-hubs',
+		name: 'other-hubs',
+		component: () => import('@hub-client/pages/OtherHubs.vue'),
+		meta: { hideBar: true },
+	},
+	{
 		path: '/error-page',
 		name: 'error-page',
 		component: () => import('@hub-client/pages/ErrorPage.vue'),

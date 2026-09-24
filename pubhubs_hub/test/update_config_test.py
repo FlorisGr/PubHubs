@@ -402,6 +402,42 @@ class ModulesTest(unittest.TestCase):
         self.assertEqual(api["config"]["client_url"], "http://localhost:9999")
 
 
+def standalone_config(**overrides) -> dict:
+    config = base_config(**overrides)
+    config["modules"].append({"module": "conf.modules.pubhubs.YiviLogin"})
+    return config
+
+
+class StandaloneTest(unittest.TestCase):
+    """A hub that lists the YiviLogin module runs without PubHubs Central and the global client."""
+
+    def test_core_module_does_not_point_at_phc(self):
+        core = module_named(generate(standalone_config()), "conf.modules.pubhubs.Core")
+        self.assertNotIn("phc_url", core["config"])
+
+    def test_owner_phc_url_is_removed(self):
+        config = standalone_config()
+        config["modules"].append(
+            {"module": "conf.modules.pubhubs.Core", "config": {"phc_url": "https://phc.pubhubs.net"}}
+        )
+        core = module_named(generate(config), "conf.modules.pubhubs.Core")
+        self.assertNotIn("phc_url", core["config"])
+
+    def test_global_client_url_defaults_to_the_hub_client(self):
+        for environment, config in (
+            ("development", standalone_config()),
+            ("production", production_config()),
+        ):
+            with self.subTest(environment=environment):
+                if environment == "production":
+                    del config["modules"][0]["config"]["global_client_url"]
+                    config["modules"].append({"module": "conf.modules.pubhubs.YiviLogin"})
+                # start_testhub.py passes no global client url for a standalone hub
+                live = generate(config, environment=environment, global_client_url=None)
+                api = module_named(live, "conf.modules.pubhubs.HubClientApi")
+                self.assertEqual(api["config"]["global_client_url"], api["config"]["client_url"])
+
+
 class OidcProvidersTest(unittest.TestCase):
     """Every field of the provider is dictated by PubHubs, so there is nothing for a hub
     owner to fill in."""

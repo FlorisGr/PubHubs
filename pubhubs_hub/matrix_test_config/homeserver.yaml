@@ -38,6 +38,19 @@ modules:
               # yivi_client_url: "http://<outside container>:8089",
               # public_yivi_url: "http://<outside container>:8008/",
           }
+    ## STANDALONE HUB: uncomment to let users log in to this hub directly with Yivi, without
+    ## PubHubs Central or the global client.  Users open the hub client itself (client_url).
+    ## Each user gets a pseudonym of their own on this hub, derived from the disclosed attribute
+    ## with a key that is generated at pseudonym_key_path on first boot.  BACK THAT KEY UP: without
+    ## it, users can no longer reach their accounts.  Changing `attribute` later also gives every
+    ## user a new, empty account.
+    # - module: conf.modules.pubhubs.YiviLogin
+    #   config:
+    #       hub_name: 'My hub'                               # default: server_name
+    #       attribute: 'pbdf.sidn-pbdf.email.email'          # default
+    #       pseudonym_key_path: '/data/yivi_login_pseudonym.key'  # default
+    #       linked_hubs:                                     # shown on the login page and under 'Other hubs'
+    #           - { name: 'Other hub', url: 'https://client.other-hub.example.org', description: 'Optional' }
 
 # Server name, used in full user/room names.
 # Warning: cannot be changed later on without issues.
@@ -65,6 +78,7 @@ database:
         database: /data/homeserver.db
 
 log_config: '/data/test_hub.log.config' # Change to /data/log.config
+
 
 # Rate limiting (rc_message, rc_login, rc_room_creation, rc_joins, rc_invites)
 # is not configured here: update_config fills in values tuned for PubHubs, see

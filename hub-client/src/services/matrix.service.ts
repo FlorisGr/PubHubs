@@ -10,6 +10,7 @@ import {
 } from 'matrix-js-sdk/lib/sliding-sync';
 
 // Logic
+import { endSoloSession } from '@hub-client/logic/core/authentication';
 import { createLogger } from '@hub-client/logic/logging/Logger';
 import { MainRoomSubscription, RoomLists, SyncProfile, makeMainRoomSubscriptionName, roomListsForProfile } from '@hub-client/logic/matrix.logic.js';
 
@@ -19,6 +20,7 @@ import { RoomType } from '@hub-client/models/rooms/TBaseRoom';
 import { DirectRooms } from '@hub-client/models/rooms/TBaseRoom';
 
 // Stores
+import { useHubSettings } from '@hub-client/stores/hub-settings';
 import { Message, MessageType, useMessageBox } from '@hub-client/stores/messagebox';
 import { useRooms } from '@hub-client/stores/rooms';
 import { useUser } from '@hub-client/stores/user';
@@ -212,7 +214,8 @@ class MatrixService {
 	/**
 	 * Handles session logout events from the Matrix SDK.
 	 * This occurs when the server returns 401 with M_UNKNOWN_TOKEN, indicating the access token is invalid.
-	 * Triggers re-authentication by notifying the global client to remove the token.
+	 * Triggers re-authentication by notifying the global client to remove the token, or, running solo
+	 * without a global client, by forgetting the token itself.
 	 */
 	private handleSessionLoggedOut = () => {
 		// Prevent multiple re-authentication attempts
@@ -221,6 +224,10 @@ class MatrixService {
 
 		logger.warn('Session logged out - access token is invalid, triggering re-authentication');
 		this.stopSync();
+		if (useHubSettings().isSolo) {
+			endSoloSession();
+			return;
+		}
 		useMessageBox().sendMessage(new Message(MessageType.RemoveAccessToken));
 	};
 

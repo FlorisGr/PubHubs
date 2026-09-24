@@ -87,6 +87,24 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 	});
 }
 
+function forgetSoloAuth() {
+	try {
+		window.localStorage.removeItem(SOLO_AUTH_KEY);
+	} catch {
+		// Nothing was stored then
+	}
+}
+
+/**
+ * The hub no longer accepts the access token of a solo hub client (revoked, or the hub was reset).
+ * Nothing else is going to replace that token, so forget it and start over, which shows a
+ * standalone hub's login page again.
+ */
+function endSoloSession() {
+	forgetSoloAuth();
+	window.location.replace(location.protocol + '//' + location.host + location.pathname);
+}
+
 class Authentication {
 	private user = useUser();
 
@@ -160,11 +178,7 @@ class Authentication {
 
 	private _clearAuth() {
 		useMessageBox().sendMessage(new Message(MessageType.RemoveAccessToken));
-		try {
-			window.localStorage.removeItem(SOLO_AUTH_KEY);
-		} catch {
-			// Nothing was stored then
-		}
+		forgetSoloAuth();
 	}
 
 	public getAccessToken(): string | null {
@@ -273,4 +287,4 @@ class Authentication {
 	}
 }
 
-export { Authentication };
+export { Authentication, endSoloSession };

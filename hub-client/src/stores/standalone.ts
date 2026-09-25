@@ -11,6 +11,8 @@ const useStandalone = defineStore('standalone', {
 	state: () => ({
 		// null for a hub entered through PubHubs Central
 		info: null as StandaloneInfo | null,
+		// Whether the rooms sidebar is minimized, leaving only the rail
+		sidebarCollapsed: false,
 	}),
 
 	getters: {
@@ -21,6 +23,10 @@ const useStandalone = defineStore('standalone', {
 	actions: {
 		setInfo(info: StandaloneInfo | null) {
 			this.info = info;
+		},
+
+		setSidebarCollapsed(collapsed: boolean) {
+			this.sidebarCollapsed = collapsed;
 		},
 	},
 });

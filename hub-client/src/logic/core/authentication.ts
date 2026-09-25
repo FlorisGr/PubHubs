@@ -96,11 +96,15 @@ function forgetSoloAuth() {
 }
 
 /**
- * The hub no longer accepts the access token of a solo hub client (revoked, or the hub was reset).
- * Nothing else is going to replace that token, so forget it and start over, which shows a
- * standalone hub's login page again.
+ * The hub no longer accepts our access token (revoked, expired, or the hub was reset). In an iframe,
+ * the global client removes it and logs in again. Running solo there is nothing else to replace the
+ * token, so forget it and start over, which shows a standalone hub's login page again.
  */
-function endSoloSession() {
+function handleRejectedToken() {
+	if (!useHubSettings().isSolo) {
+		useMessageBox().sendMessage(new Message(MessageType.RemoveAccessToken));
+		return;
+	}
 	forgetSoloAuth();
 	window.location.replace(location.protocol + '//' + location.host + location.pathname);
 }
@@ -287,4 +291,4 @@ class Authentication {
 	}
 }
 
-export { Authentication, endSoloSession };
+export { Authentication, handleRejectedToken };

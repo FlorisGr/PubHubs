@@ -1,25 +1,22 @@
 // Logic
 import { Api } from '@hub-client/logic/core/apiCore';
+import { handleRejectedToken } from '@hub-client/logic/core/authentication';
 import { CONFIG } from '@hub-client/logic/logging/Config';
-
-// Stores
-import { Message, MessageType, useMessageBox } from '@hub-client/stores/messagebox';
 
 const BASE_URL = CONFIG._env.HUB_URL;
 
 let isReauthenticating = false;
 
 /**
- * Handler for 401 Unauthorized responses.
- * Sends a message to the global-client to remove the invalid token and trigger re-authentication.
- * The global-client will reload the page, prompting the user to log in again.
+ * Handler for 401 Unauthorized responses: have the global client (or, running solo, the hub client
+ * itself) drop the invalid token and log in again.
  */
 const handleUnauthorized = () => {
 	// Prevent multiple re-authentication attempts
 	if (isReauthenticating) return;
 	isReauthenticating = true;
 
-	useMessageBox().sendMessage(new Message(MessageType.RemoveAccessToken));
+	handleRejectedToken();
 };
 
 const api_synapse = new Api(BASE_URL + '/_synapse/', {

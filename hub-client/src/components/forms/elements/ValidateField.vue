@@ -66,7 +66,8 @@
 	const model = defineModel<unknown>();
 	const originalValue = ref<unknown>(undefined);
 
-	const { id, fieldName, changed } = useFormInput(props, model);
+	// The default slot is the whole field, handed its id, so there is no label to take a name from
+	const { id, fieldName, changed } = useFormInput(props, model, { nameFromSlot: false });
 	const { validateField, validated, required } = useFieldValidation(props.name, model, props.validation);
 
 	const addField = inject('addField', () => {}) as (...args: unknown[]) => unknown;

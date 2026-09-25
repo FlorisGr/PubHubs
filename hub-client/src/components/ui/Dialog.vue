@@ -17,13 +17,13 @@
 		<div
 			v-if="!dialog.properties.modalonly"
 			class="text-on-surface relative top-0 left-0 flex h-full w-full items-center"
-			:class="isMobile ? 'justify-end' : 'justify-center'"
+			:class="inHubPane ? 'justify-end' : 'justify-center'"
 			role="dialog"
 			@click="doAction(DialogCancel)"
 		>
 			<div
 				class="flex justify-center"
-				:class="isMobile && dialog.properties.type != 'global' ? 'w-[calc(50vw+40px)]' : 'w-full'"
+				:class="inHubPane ? 'w-[calc(50vw+40px)]' : 'w-full'"
 			>
 				<div
 					class="bg-surface-base rounded-base border-surface-elevated gap-050 flex max-h-full flex-col justify-between border-3 shadow-2xl"
@@ -99,6 +99,7 @@
 
 	// Hub imports
 	import { type DialogButton, type DialogButtonAction, DialogCancel, DialogOk, useDialog } from '@hub-client/stores/dialog';
+	import { useHubSettings } from '@hub-client/stores/hub-settings';
 	import { useSettings } from '@hub-client/stores/settings';
 
 	const props = defineProps({
@@ -127,7 +128,11 @@
 	const dialog = useDialog();
 	const slots = useSlots();
 	const settings = useSettings();
+	const hubSettings = useHubSettings();
 	const isMobile = computed(() => settings.isMobileState);
+	// On a phone, the global client shows the hub next to its bar, so a hub dialog fits that pane.
+	// Running solo, the hub client has the whole screen.
+	const inHubPane = computed(() => isMobile.value && dialog.properties.type !== 'global' && !hubSettings.isSolo);
 
 	const hasContent = computed(() => {
 		return slots['default'] || dialog.properties.content !== '';

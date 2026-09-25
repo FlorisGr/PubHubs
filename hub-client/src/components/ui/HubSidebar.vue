@@ -1,7 +1,7 @@
 <template>
 	<HeaderFooter
 		class="relative shrink-0"
-		:class="isMobile && !hubSettings.isSolo ? 'w-[calc(50%-40px)]!' : 'flex max-w-[280px]'"
+		:class="isMobile && !hubSettings.isSolo ? 'w-[calc(50%-40px)]!' : sidebarFillsScreen ? 'flex min-w-0 flex-1' : 'flex max-w-[280px]'"
 	>
 		<template #header>
 			<div class="flex h-full w-full items-center justify-between gap-200">
@@ -34,7 +34,9 @@
 			/>
 			<template v-if="!showModerationMenu">
 				<section class="flex flex-col gap-200">
+					<!-- On a standalone hub the profile lives on the rail -->
 					<div
+						v-if="!standalone.isStandalone"
 						class="bg-surface text-hub-text rounded-base border-surface-elevated flex h-1000 items-center justify-between overflow-hidden border-3 p-200"
 						role="complementary"
 					>
@@ -63,7 +65,7 @@
 					<!-- General menu -->
 					<Menu>
 						<MenuItem
-							v-for="(item, index) in menu.getMenu"
+							v-for="(item, index) in sidebarMenu"
 							:key="index"
 							:to="item.to"
 							:icon="item.icon"
@@ -73,7 +75,7 @@
 						<!-- Entry into the moderation menu. Styled like a MenuItem, but only swaps the
 						     sidebar to that menu; pages are picked from there, so it does not navigate. -->
 						<li
-							v-if="isModerator"
+							v-if="isModerator && !standalone.isStandalone"
 							class="hover:bg-surface-elevated rounded-base h-fit transition-all duration-200 ease-in-out"
 							role="menuitem"
 						>
@@ -84,21 +86,6 @@
 							>
 								<Icon type="circles-three-plus" />
 								<span class="w-full truncate text-left">{{ t('menu.moderation') }}</span>
-							</button>
-						</li>
-						<!-- A standalone hub has no global client to log out from, so offer it here -->
-						<li
-							v-if="standalone.isStandalone"
-							class="hover:bg-surface-elevated rounded-base h-fit transition-all duration-200 ease-in-out"
-							role="menuitem"
-						>
-							<button
-								class="flex w-full items-center gap-200 px-200 py-100 hover:cursor-pointer"
-								type="button"
-								@click="pubhubs.logout()"
-							>
-								<Icon type="sign-out" />
-								<span class="w-full truncate text-left">{{ t('logout.logout') }}</span>
 							</button>
 						</li>
 					</Menu>
@@ -242,6 +229,8 @@
 	import { useRoles } from '@hub-client/composables/roles.composable';
 	import { useClipboard } from '@hub-client/composables/useClipboard';
 	import useGlobalScroll from '@hub-client/composables/useGlobalScroll';
+	import { useModerationMenu } from '@hub-client/composables/useModerationMenu';
+	import { useStandaloneSidebar } from '@hub-client/composables/useStandaloneSidebar';
 
 	// Models
 	import { PublicRooms, SecuredRooms } from '@hub-client/models/rooms/TBaseRoom';
@@ -250,7 +239,6 @@
 	import { useHubSettings } from '@hub-client/stores/hub-settings';
 	import { useMenu } from '@hub-client/stores/menu';
 	import { useNotifications } from '@hub-client/stores/notifications';
-	import { usePubhubsStore } from '@hub-client/stores/pubhubs';
 	import { useRooms } from '@hub-client/stores/rooms';
 	import { useSettings } from '@hub-client/stores/settings';
 	import { useStandalone } from '@hub-client/stores/standalone';
@@ -266,7 +254,6 @@
 	const user = useUser();
 	const rooms = useRooms();
 	const menu = useMenu();
-	const pubhubs = usePubhubsStore();
 	const standalone = useStandalone();
 	const roles = useRoles();
 	const notifications = useNotifications();
@@ -276,9 +263,9 @@
 
 	const route = useRoute();
 	const version = __APP_VERSION__;
-	// INFO: when adding a page to the moderation sidebar, update the routes
-	const moderationRoutes = new Set(['hub-settings', 'manage-rooms', 'manage-users', 'manage-roles', 'reports', 'editroom']);
-	const showModerationMenu = ref(moderationRoutes.has(route.name as string));
+	const { moderationRoutes, showModerationMenu } = useModerationMenu();
+	const { sidebarFillsScreen } = useStandaloneSidebar();
+	showModerationMenu.value = moderationRoutes.has(route.name as string);
 
 	watch(
 		() => route.name,
@@ -288,6 +275,10 @@
 	);
 
 	const isMobile = computed(() => settings.isMobileState);
+	// On a standalone hub the rail has the other menu items, next to the rooms only direct messages stay
+	const sidebarMenu = computed(() =>
+		standalone.isStandalone ? menu.getMenu.filter((item) => (item.to as { name?: string }).name === 'direct-msg') : menu.getMenu,
+	);
 	const hasPublicRooms = computed(() => rooms.loadedPublicRooms.length > 0 || !rooms.roomsLoaded);
 	const hasSecuredRooms = computed(() => rooms.loadedSecuredRooms.length > 0 || notifications.notifications.length > 0 || !rooms.roomsLoaded);
 

@@ -4,7 +4,19 @@ import { computed, getCurrentInstance, ref, useSlots } from 'vue';
 // Logic
 import { firstToUpper } from '@hub-client/logic/core/extensions';
 
-export function useFormInput(props: { id?: string; name?: string; [key: string]: unknown }, model: { value: unknown } | undefined = undefined) {
+/**
+ * @param props
+ * @param model
+ * @param options.nameFromSlot Whether the default slot is the field's label, to use as its name. Not
+ *   for a component whose default slot is scoped, since that can't be called without its props.
+ */
+export function useFormInput(
+	props: { id?: string; name?: string; [key: string]: unknown },
+	model: { value: unknown } | undefined = undefined,
+	{ nameFromSlot = true }: { nameFromSlot?: boolean } = {},
+) {
+	// In setup: the computed below can be evaluated later, when there is no current instance
+	const slots = useSlots();
 	const changed = ref(false);
 	const hasFocus = ref(false);
 
@@ -14,11 +26,8 @@ export function useFormInput(props: { id?: string; name?: string; [key: string]:
 	});
 
 	const slotDefault = computed(() => {
-		const slots = useSlots();
-		if (slots.default) {
-			return slots.default()[0].children?.toString() as string;
-		}
-		return '';
+		if (!nameFromSlot || !slots.default) return '';
+		return slots.default()[0]?.children?.toString() ?? '';
 	});
 
 	// Set fieldname explicitly in props, or if not set explicitly, it will use the 'label' inside the default slot as fieldname

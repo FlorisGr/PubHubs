@@ -3,9 +3,18 @@
 		v-if="user.isLoggedIn && setupReady"
 		class="bg-background font-body text-on-surface text-body flex h-screen w-full overflow-hidden"
 	>
-		<HubSidebar @open-settings="settingsDialog = true" />
+		<StandaloneRail
+			v-if="standalone.isStandalone"
+			@open-preferences="preferencesDialog = true"
+			@open-settings="settingsDialog = true"
+		/>
+		<HubSidebar
+			v-if="!standalone.sidebarCollapsed"
+			@open-settings="settingsDialog = true"
+		/>
 
 		<div
+			v-show="!sidebarFillsScreen"
 			class="h-full min-w-0 flex-1 overflow-x-hidden"
 			:class="isMobile && !hubSettings.isSolo ? 'w-screen' : ''"
 			role="document"
@@ -16,6 +25,11 @@
 		<SettingsDialog
 			v-if="settingsDialog"
 			@close="settingsDialog = false"
+		/>
+
+		<StandaloneSettingsDialog
+			v-if="preferencesDialog"
+			@close="preferencesDialog = false"
 		/>
 
 		<Dialog
@@ -44,13 +58,17 @@
 	import ContextMenu from '@hub-client/components/elements/ContextMenu.vue';
 	// Components
 	import SettingsDialog from '@hub-client/components/forms/SettingsDialog.vue';
+	import StandaloneSettingsDialog from '@hub-client/components/forms/StandaloneSettingsDialog.vue';
 	import Dialog from '@hub-client/components/ui/Dialog.vue';
 	import HubSidebar from '@hub-client/components/ui/HubSidebar.vue';
+	import StandaloneRail from '@hub-client/components/ui/StandaloneRail.vue';
 
 	// Composables
 	import { useUnreadAggregate } from '@hub-client/composables/unreadAggregate.composable';
 	import { useBackNavigation } from '@hub-client/composables/useBackNavigation';
 	import { useSidebar } from '@hub-client/composables/useSidebar';
+	import { useStandalonePreferences } from '@hub-client/composables/useStandalonePreferences';
+	import { useStandaloneSidebar } from '@hub-client/composables/useStandaloneSidebar';
 	import { useSwipeBack } from '@hub-client/composables/useSwipeBack';
 
 	// Logic
@@ -91,6 +109,7 @@
 	const menu = useMenu();
 	const standalone = useStandalone();
 	const settingsDialog = ref(false);
+	const preferencesDialog = ref(false);
 	const setupReady = ref(false);
 	const showStandaloneLogin = ref(false);
 	const pendingRouteFromParent = ref<RouteParamValue | null>(null);
@@ -105,6 +124,8 @@
 	// Handling the swipe in both places at once would have the two race over the same gesture.
 	const { canGoBack, back } = useBackNavigation();
 	const sidebar = useSidebar();
+	const standaloneSidebar = useStandaloneSidebar();
+	const { sidebarFillsScreen } = standaloneSidebar;
 	useSwipeBack(back, () => isMobile.value === true && canGoBack.value);
 
 	// A sidebar belongs to the page that opened it. Pages that open one do not all close it again on
@@ -118,6 +139,25 @@
 		() => router.currentRoute.value.name,
 		() => sidebar.closeInstantly(),
 	);
+
+	// On a phone, a standalone hub's rooms sidebar leaves hardly any room for the page navigated to.
+	// On the full path, since going from one room to another keeps the route name.
+	watch(
+		() => router.currentRoute.value.fullPath,
+		() => {
+			if (standalone.isStandalone) standaloneSidebar.collapseOnPhone();
+		},
+	);
+	// hideBar() is how the hub asks the global client to show the page instead of its menu on a
+	// phone (e.g. after tapping a room, also the one already open). A standalone hub does it itself.
+	hubSettings.$onAction(({ name }) => {
+		if (name === 'hideBar' && standalone.isStandalone) standaloneSidebar.collapseOnPhone();
+	});
+	// Crossing the phone breakpoint: follow that screen size's rule, instead of e.g. keeping a sidebar
+	// that was minimized automatically on a phone
+	watch(isMobile, () => {
+		if (standalone.isStandalone) standaloneSidebar.restoreCollapsed();
+	});
 
 	// The global client cannot see a swipe that happens over the hub iframe, so it does not know
 	// whether to let it scroll the hub out of view or to leave it to the hub. Tell it. Sending only
@@ -233,6 +273,8 @@
 		standalone.setInfo(info);
 		if (!info) return;
 		hubSettings.initHubInformation({ name: info.hub_name });
+		useStandalonePreferences().restorePreferences();
+		standaloneSidebar.restoreCollapsed();
 		if (info.linked_hubs.length > 0) {
 			menu.addMenuItem({ key: 'menu.other_hubs', icon: 'globe', to: { name: 'other-hubs' }, path: '/other-hubs' });
 		}

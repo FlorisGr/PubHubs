@@ -79,13 +79,7 @@ class FakeRateLimitConfig:
 class FakeRatelimiting:
     rc_room_creation = FakeRateLimitConfig()
 
-class FakeModulesConfig:
-    # no YiviLogin: not a standalone hub
-    loaded_modules = []
-
-
 class FakeHsConfig:
-    modules = FakeModulesConfig()
     room = FakeRoomConfig
     server = FakeServer
     servernotices = FakeNoticesManager()

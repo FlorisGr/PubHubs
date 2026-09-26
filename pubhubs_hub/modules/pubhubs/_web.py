@@ -7,7 +7,8 @@ from synapse.http.server import DirectServeJsonResource, respond_with_json
 from synapse.types import JsonDict
 from twisted.web.resource import Resource
 
-from ._secured_room_knock import allowed_disclosure, grant_access
+import time
+from ._secured_rooms_class import RoomAttribute
 from ._store import HubStore
 from ._validation import user_validator
 from ._cors import set_allow_origin_header
@@ -141,10 +142,54 @@ class YiviResult(DirectServeJsonResource):
         """
         logger.debug(f"'{result=}' after a disclose")
 
-        room = await self.store.get_secured_room(room_id)
-        if room is None:
+        if result.get("proofStatus") is None:
             return None
-        return allowed_disclosure(result, room)
+
+        if result["proofStatus"] == "VALID":
+            if result.get("disclosed") is None:
+                return None
+
+            disclosed = self._flatten(result.get("disclosed"))
+
+            if len(disclosed) < 1:
+                return None
+
+            room = await self.store.get_secured_room(room_id)
+
+            if room is None:
+                return None
+
+            disclosed_to_show = {}
+
+            disclosed_attributes = {}
+            for attribute in disclosed:
+                id = attribute.get("id")
+                value = attribute.get("rawvalue")
+                disclosed_attributes[id] = value
+
+            for required in room.accepted.keys():
+                disclosed_value = disclosed_attributes.get(required, None)
+                if disclosed_value:
+                    room_attribute: RoomAttribute = room.accepted[required]
+                    if room_attribute:
+                        if (
+                            len(room_attribute.accepted_values) == 0
+                            or disclosed_value in room_attribute.accepted_values
+                        ):
+                            if room_attribute.profile:
+                                disclosed_to_show[required] = disclosed_value
+                            else:
+                                disclosed_to_show[required] = ""
+                        else:
+                            return None
+                    else:
+                        return None
+                else:
+                    return None
+
+            return disclosed_to_show
+        else:
+            return None
 
     @user_validator(USER)
     async def _async_render_GET(self, request: SynapseRequest, user_id: str):
@@ -164,13 +209,27 @@ class YiviResult(DirectServeJsonResource):
         result = await self._module_api.http_client.get_json(f"{self._config.yivi_url_web}/session/{token}/result")
         allowed = await self.check_allowed(result, room_id)
         if allowed:
-            # Also invites, when the room's join rule is 'knock' (see _secured_room_knock.py)
-            await grant_access(self._module_api, self._config, self.store, user_id, room_id, allowed)
+            await self.store.allow(user_id, room_id, time.time())
 
             answer = {
                     "goto": f"{self._config.client_url}#/room/{room_id}"
 
                     }
+
+
+            disclosed = allowed
+
+            await self._module_api.create_and_send_event_into_room(
+                {
+                    "type": "m.room.message",
+                    "room_id": room_id,
+                    "sender": self._config.server_notices_user,
+                    "content": {
+                        "body": f"{user_id} joined the room with attributes {disclosed}",
+                        "msgtype": "m.notice",
+                    },
+                }
+            )
 
             respond_with_json(request, 200, answer)
         else:
@@ -193,4 +252,10 @@ class YiviResult(DirectServeJsonResource):
 
         respond_with_json(request, 200, result)
             
+
+    def _flatten(self, matrix):
+        flat_list = []
+        for row in matrix:
+            flat_list.extend(row)
+        return flat_list
 

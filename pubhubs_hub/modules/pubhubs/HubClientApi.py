@@ -17,7 +17,6 @@ from ._constants import METHOD_POLLING_INTERVAL, CLIENT_URL, GLOBAL_CLIENT_URL
 from ._hub_resource import HubResource
 from ._hub_client_api_config import HubClientApiConfig
 from ._steward import StewardResource
-from ._secured_room_knock import SecuredRoomKnocks, link_key, switch_secured_rooms_to_knock
 
 
 logger = logging.getLogger("synapse.contrib." + __name__)
@@ -65,12 +64,6 @@ class HubClientApi(object):
         run_in_background(self.store.create_tables)
 
         self.module_api.looping_background_call(self.store.remove_from_room, METHOD_POLLING_INTERVAL)
-
-        if self._config.is_standalone:
-            # Users of other Matrix clients get into secured rooms by knocking
-            SecuredRoomKnocks(api, self._config, self.store, link_key(api)).register()
-            # Once synapse runs, and after create_tables
-            api.delayed_background_call(10_000, switch_secured_rooms_to_knock, api, self._config, self.store, desc="switch_secured_rooms_to_knock")
 
         api.register_web_resource("/_synapse/client/ph", JoinServlet(self._config, self.module_api, self.store))
         api.register_web_resource("/_synapse/client/yiviproxy", ProxyServlet(self._config, self.module_api))

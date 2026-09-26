@@ -60,9 +60,7 @@ class SecuredRoomsServlet(DirectServeJsonResource):
 
         # Adds the room_id
         await new_room.matrix_create(
-            self._module_api, self._room_creation_handler, user_id, self._config.server_notices_user,
-            # Other Matrix clients cannot run the Yivi flow before joining, so their users knock
-            join_rule="knock" if self._config.is_standalone else "public",
+            self._module_api, self._room_creation_handler, user_id, self._config.server_notices_user
         )
         await self._store.create_secured_room(new_room)
         respond_with_json(request, 200, new_room.to_dict(), True)

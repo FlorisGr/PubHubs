@@ -11,17 +11,6 @@ WORKDIR /irmago
 RUN git clone https://github.com/privacybydesign/irmago . --branch v1.3.1 --depth 1 && \
 	go install ./yivi
 
-### BUILD STAGE:  YIVI PAGES
-# The pages a standalone hub serves to users of other Matrix clients (modules/pubhubs/_yivi_pages.py):
-# the Yivi frontend bundled with their script.  Same major as the nodejs in flake.nix.
-FROM node:24-trixie-slim AS yivi_pages_build
-
-WORKDIR /yivi_pages
-COPY yivi_pages/package.json yivi_pages/package-lock.json ./
-RUN npm ci --no-audit --no-fund
-COPY yivi_pages/src src
-RUN npm run build
-
 ## FINAL CONTAINER STAGE
 
 FROM ghcr.io/element-hq/synapse:v1.160.0
@@ -52,7 +41,6 @@ RUN pip install --no-cache-dir livekit-api && \
 
 COPY modules /conf/modules
 COPY assets /non-persistent-data/assets
-COPY --from=yivi_pages_build /yivi_pages/dist /non-persistent-data/assets/yivi_pages
 COPY --chmod=755 boot /conf/boot
 
 # Store hub version in '/hub_version'.  Kept last on purpose: HUB_VERSION changes on every build,

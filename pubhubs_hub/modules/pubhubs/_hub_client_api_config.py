@@ -89,18 +89,4 @@ class HubClientApiConfig(object):
     def media_dir_path(self) -> str:
         return self._media_dir_path
 
-    @property
-    def is_standalone(self) -> bool:
-        """Whether users log in to this hub with Yivi directly (see YiviLogin.py), and so may use
-        other Matrix clients than the hub client."""
-        return any(module.__name__ == 'YiviLogin' for module, _ in self._module_api._hs.config.modules.loaded_modules)
-
-    @property
-    def hub_name(self) -> str:
-        """What the hub's own pages call it: a standalone hub's configured name, else its server name."""
-        for module, config in self._module_api._hs.config.modules.loaded_modules:
-            if module.__name__ == 'YiviLogin' and getattr(config, 'hub_name', None):
-                return config.hub_name
-        return self._module_api.server_name
-
 

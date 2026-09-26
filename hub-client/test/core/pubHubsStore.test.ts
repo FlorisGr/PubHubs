@@ -1,7 +1,6 @@
 // Packages
-import { MatrixError } from 'matrix-js-sdk';
 import { createPinia, setActivePinia } from 'pinia';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 
 // Stores
 import { usePubhubsStore } from '@hub-client/stores/pubhubs';
@@ -100,64 +99,6 @@ describe('PubHubs Store', () => {
 
 			expect(content).toHaveProperty('body', source);
 			expect(content).not.toHaveProperty('formatted_body');
-		});
-	});
-	// A secured room on a standalone hub has join rule 'knock': joining takes an invite, which the hub
-	// gives on a knock to whoever may join
-	describe('joinOrKnock', () => {
-		const forbidden = () => new MatrixError({ errcode: 'M_FORBIDDEN', error: 'You are not invited to this room.' }, 403);
-
-		beforeEach(() => {
-			vi.useFakeTimers();
-		});
-
-		afterEach(() => {
-			vi.useRealTimers();
-		});
-
-		test('joins a room it may just join', async () => {
-			const pubhubs = usePubhubsStore() as Partial<any>;
-			pubhubs.client = { joinRoom: vi.fn().mockResolvedValue('room'), knockRoom: vi.fn() };
-			expect(await pubhubs.joinOrKnock('!r')).toEqual('room');
-			expect(pubhubs.client.knockRoom).not.toHaveBeenCalled();
-		});
-
-		test('knocks when a join is refused, and joins once invited', async () => {
-			const pubhubs = usePubhubsStore() as Partial<any>;
-			pubhubs.client = {
-				joinRoom: vi.fn().mockRejectedValueOnce(forbidden()).mockRejectedValueOnce(forbidden()).mockResolvedValue('room'),
-				knockRoom: vi.fn().mockResolvedValue({ room_id: '!r' }),
-			};
-			const joined = pubhubs.joinOrKnock('!r');
-			await vi.runAllTimersAsync();
-			expect(await joined).toEqual('room');
-			expect(pubhubs.client.knockRoom).toHaveBeenCalledWith('!r');
-			expect(pubhubs.client.joinRoom).toHaveBeenCalledTimes(3);
-		});
-
-		test("throws the join's error when knocking fails too", async () => {
-			const pubhubs = usePubhubsStore() as Partial<any>;
-			const error = forbidden();
-			pubhubs.client = { joinRoom: vi.fn().mockRejectedValue(error), knockRoom: vi.fn().mockRejectedValue(forbidden()) };
-			await expect(pubhubs.joinOrKnock('!r')).rejects.toBe(error);
-		});
-
-		test('gives up when no invite comes', async () => {
-			const pubhubs = usePubhubsStore() as Partial<any>;
-			const error = forbidden();
-			pubhubs.client = { joinRoom: vi.fn().mockRejectedValue(error), knockRoom: vi.fn().mockResolvedValue({ room_id: '!r' }) };
-			const joined = pubhubs.joinOrKnock('!r');
-			const assertion = expect(joined).rejects.toBe(error);
-			await vi.runAllTimersAsync();
-			await assertion;
-		});
-
-		test('does not knock on other errors', async () => {
-			const pubhubs = usePubhubsStore() as Partial<any>;
-			const banned = new MatrixError({ errcode: 'M_BAD_STATE', error: 'banned' }, 403);
-			pubhubs.client = { joinRoom: vi.fn().mockRejectedValue(banned), knockRoom: vi.fn() };
-			await expect(pubhubs.joinOrKnock('!r')).rejects.toBe(banned);
-			expect(pubhubs.client.knockRoom).not.toHaveBeenCalled();
 		});
 	});
 });

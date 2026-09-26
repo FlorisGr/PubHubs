@@ -270,6 +270,10 @@ it is not there yet), then runs the hub server and hub client in a TMUX session.
 global client or `mask run yivi` needed: the hub container runs its own Yivi server. Open the hub
 client directly, on port 8001 + n.
 
+Other Matrix clients (e.g. Element) can use the hub too: point them at `http://localhost:8008 + n`
+and pick 'Continue with Yivi'. The Yivi pages they get are served by the hub itself and baked into
+the hub image, so rebuild it (`mask run hub init testhub-image`) after changing `pubhubs_hub/yivi_pages`.
+
 Scanning the QR code requires the Yivi app in developer mode, on a phone that can reach this
 machine's network address. `mask run hub init testhub-dirs` wipes the hub's pseudonym key, which
 orphans all its local accounts.

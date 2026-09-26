@@ -44,6 +44,11 @@ modules:
     ## with a key that is generated at pseudonym_key_path on first boot.  BACK THAT KEY UP: without
     ## it, users can no longer reach their accounts.  Changing `attribute` later also gives every
     ## user a new, empty account.
+    ## Other Matrix clients (e.g. Element) can log in too, with 'Continue with Yivi' (Matrix SSO):
+    ## they get the same account as the hub client.  The hub serves the Yivi pages for them
+    ## itself, so they need no hub client.
+    ## Secured rooms get join rule 'knock' (existing ones are switched at startup): users of those
+    ## clients 'Ask to join', and get a notice with a link to show their attributes with Yivi.
     # - module: conf.modules.pubhubs.YiviLogin
     #   config:
     #       hub_name: 'My hub'                               # default: server_name

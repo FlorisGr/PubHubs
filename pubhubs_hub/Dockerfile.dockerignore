@@ -9,3 +9,8 @@
 !config
 !config/local
 !config/local/livekit.local.yaml
+!yivi_pages
+!yivi_pages/package.json
+!yivi_pages/package-lock.json
+!yivi_pages/src
+!yivi_pages/src/**

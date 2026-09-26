@@ -395,7 +395,7 @@ const usePubhubsStore = defineStore('pubhubs', {
 		async joinRoom(room_id: string, knownRoomType?: string, knownRoomName?: string): Promise<number> {
 			const roomStore = useRooms();
 			try {
-				const matrixRoom = await this.client.joinRoom(room_id);
+				const matrixRoom = await this.joinOrKnock(room_id);
 				this.client.store.storeRoom(matrixRoom);
 				const publicRoomEntry = (await this.getAllPublicRooms()).find((r: TPublicRoom) => r.room_id === room_id);
 				const roomType: string = knownRoomType ?? publicRoomEntry?.room_type ?? getRoomType(matrixRoom);
@@ -418,6 +418,35 @@ const usePubhubsStore = defineStore('pubhubs', {
 				return -1;
 			}
 			return 0;
+		},
+
+		/**
+		 * Joins a room. A secured room on a standalone hub has join rule 'knock', so joining it takes an
+		 * invite. The hub gives one right away, on a knock, to whoever may join it (e.g. rejoining after a
+		 * kick), so knock when a join is refused and join again.
+		 */
+		async joinOrKnock(room_id: string) {
+			try {
+				return await this.client.joinRoom(room_id);
+			} catch (err) {
+				if (!(err instanceof MatrixError) || err.errcode !== 'M_FORBIDDEN') throw err;
+				try {
+					await this.client.knockRoom(room_id);
+				} catch {
+					// Not a knock room, or knocking is not allowed either: the join's error is the one to show
+					throw err;
+				}
+				// The hub invites in response to the knock, which takes a moment
+				for (const wait of [300, 700, 1500, 3000]) {
+					await new Promise((resolve) => setTimeout(resolve, wait));
+					try {
+						return await this.client.joinRoom(room_id);
+					} catch {
+						// not invited yet
+					}
+				}
+				throw err;
+			}
 		},
 
 		async invite(room_id: string, user_id: string, reason = undefined) {

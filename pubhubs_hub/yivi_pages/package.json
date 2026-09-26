@@ -1,0 +1,18 @@
+{
+	"name": "pubhubs-hub-yivi-pages",
+	"private": true,
+	"description": "The Yivi pages a standalone hub serves itself, for users of other Matrix clients (see modules/pubhubs/_yivi_pages.py)",
+	"type": "module",
+	"scripts": {
+		"build": "esbuild src/main.js --bundle --minify --target=es2020 --outfile=dist/yivi-pages.js"
+	},
+	"dependencies": {
+		"@privacybydesign/yivi-client": "1.0.1",
+		"@privacybydesign/yivi-core": "1.0.0",
+		"@privacybydesign/yivi-css": "1.0.1",
+		"@privacybydesign/yivi-web": "1.0.3"
+	},
+	"devDependencies": {
+		"esbuild": "0.28.2"
+	}
+}

@@ -4,7 +4,7 @@ import string
 from json import JSONEncoder
 from typing import Optional
 import logging
-from synapse.api.constants import RoomCreationPreset, EventTypes
+from synapse.api.constants import RoomCreationPreset, EventTypes, JoinRules
 from synapse.handlers.room import RoomCreationHandler
 from synapse.module_api import ModuleApi
 from synapse.types import create_requester
@@ -145,7 +145,7 @@ class SecuredRoom:
         self.expiration_time_days = expiration_time_days
 
     async def matrix_create(self, module_api: ModuleApi, room_creation_handler: RoomCreationHandler, user,
-                            server_notices_user):
+                            server_notices_user, join_rule: str = JoinRules.PUBLIC):
         requester = create_requester(user)
         config = {
             "preset": RoomCreationPreset.PUBLIC_CHAT,
@@ -172,6 +172,18 @@ class SecuredRoom:
 
         # Add server notices user, creator is automatically a member
         await module_api.update_room_membership(server_notices_user, server_notices_user, self.room_id, 'join')
+
+        # Only now: joining a 'knock' room takes an invite, and synapse refuses to invite the server
+        # notices user.  See _secured_room_knock.py for why 'knock'.
+        if join_rule != JoinRules.PUBLIC:
+            await module_api.create_and_send_event_into_room(
+                {
+                    "content": {"join_rule": join_rule},
+                    "sender": user,
+                    "type": EventTypes.JoinRules,
+                    "room_id": self.room_id,
+                    "state_key": "",
+                })
 
         # Add to public rooms list, so it can be found.
         await module_api.public_room_list_manager.add_room_to_public_room_list(self.room_id)
